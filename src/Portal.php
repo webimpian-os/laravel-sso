@@ -95,6 +95,24 @@ class Portal
         return $claims;
     }
 
+    // Returns sub, email, name, workos_user_id, created, access and access_reason.
+    public function addStaff(string $email, string $firstName, ?string $lastName = null): array
+    {
+        try {
+            $response = $this->http()
+                ->withBasicAuth((string) config('sso.client_id'), (string) config('sso.client_secret'))
+                ->post(static::issuer().'/api/staff', array_filter(['email' => $email, 'first_name' => $firstName, 'last_name' => $lastName]));
+        } catch (ConnectionException $e) {
+            throw $this->fault('The portal could not be reached', $e);
+        }
+
+        if (! $response->successful()) {
+            throw new SsoException($response->json('error_description') ?? $response->json('message') ?? "The portal didn't add them (HTTP {$response->status()}).", $response->status());
+        }
+
+        return $response->json();
+    }
+
     // Uncached, so a portal outage is seen before staff are sent there.
     public function reachable(): bool
     {

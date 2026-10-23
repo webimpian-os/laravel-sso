@@ -124,6 +124,7 @@ Monitor, Onboard and Billing each run their own WorkOS sign-in today. The packag
 | Revoked check, `last_signed_in_at`, avatar | `Sso::resolveUsersUsing()` |
 | `workos_session_id` in the session | `Sso::check()` |
 | `RevokeWorkosSessionOnLogout` | Remove it. The portal ends the WorkOS session. |
+| The "add user" page creates them in WorkOS | `Sso::addStaff()`, below |
 
 The staff sync, webhooks and admin pages can stay. For example, in `AppServiceProvider::boot()`:
 
@@ -153,13 +154,28 @@ Sso::resolveUsersUsing(function (array $claims) {
 
 The claims are `sub`, `sid`, `name`, `email`, `picture`, and with the `staff` scope `roles` and `workos_user_id`.
 
+## Adding staff
+
+From any of its own pages, an app can add someone to WorkOS and the portal, and give them access to the app, in one call. First turn on **Can add staff** on the app's Access tab in the portal.
+
+```php
+$staff = Sso::addStaff('aina@webimpian.com', 'Aina', 'Rahman');
+
+User::create(['name' => $staff['name'], 'email' => $staff['email'], 'sso_sub' => $staff['sub']]);
+```
+
+- New people are created in WorkOS and the portal; people already on staff are found, not duplicated. Nobody is emailed, so tell them to sign in.
+- An app with an access list adds them to it, and an app for all staff needs nothing. An app that gives access by WorkOS role or group gets `access: false`, because those stay with portal admins.
+- A refusal throws `SsoException` with the portal's reason and status: 409 for someone whose access was revoked, 422 for an address outside the company domains, 503 when WorkOS is down.
+- Saving `sub` straight away means their first sign-in matches without any email linking.
+
 ## Local sign-in
 
 Sessions that didn't come from the portal, such as a break-glass admin login, are left alone, and signing out sends them to the home page.
 
 ## Testing
 
-`Sso::fake()` signs people in without calling the portal:
+`Sso::fake()` signs people in, and `Sso::addStaff()` answers, without calling the portal:
 
 ```php
 Sso::fake(['email' => $user->email, 'roles' => ['admin']]);

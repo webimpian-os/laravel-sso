@@ -34,6 +34,11 @@ class Sso
         static::$syncRoles = $callback;
     }
 
+    public static function addStaff(string $email, string $firstName, ?string $lastName = null): array
+    {
+        return app(Portal::class)->addStaff($email, $firstName, $lastName);
+    }
+
     public static function fake(array $claims = []): FakePortal
     {
         $fake = new FakePortal($claims);
