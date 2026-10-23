@@ -6,8 +6,8 @@ use Webimpian\Sso\Sso;
 use Webimpian\Sso\Tests\User;
 
 it('signs in without calling the portal when faked', function () {
-    $user = User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
-    Sso::fake(['email' => 'aina@webimpian.com']);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
+    Sso::fake(['email' => 'aina@example.com']);
 
     $this->followingRedirects()->get('dashboard')->assertOk()->assertSee('dashboard');
 

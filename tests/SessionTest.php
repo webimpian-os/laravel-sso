@@ -8,7 +8,7 @@ use Webimpian\Sso\Sso;
 use Webimpian\Sso\Tests\User;
 
 beforeEach(function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
 });
 
 it('ends the app session the portal says has ended', function () {
@@ -128,7 +128,7 @@ it('tells the app when the portal revokes or restores someone, and ends their se
 
     $this->post('auth/sso/backchannel-logout', ['logout_token' => $this->logoutToken(['sid' => null, 'revoked' => true])])->assertOk();
 
-    Event::assertDispatched(StaffRevoked::class, fn (StaffRevoked $event) => $event->user->email === 'aina@webimpian.com');
+    Event::assertDispatched(StaffRevoked::class, fn (StaffRevoked $event) => $event->user->email === 'aina@example.com');
     $this->get('dashboard')->assertRedirect('http://localhost/auth/sso/login');
 
     $this->post('auth/sso/backchannel-logout', ['logout_token' => $this->logoutToken(['sid' => null, 'revoked' => false, 'jti' => 'logout-2'])])->assertOk();

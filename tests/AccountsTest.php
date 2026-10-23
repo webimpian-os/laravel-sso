@@ -21,7 +21,7 @@ it('creates the account with the default role in auto mode', function () {
     $this->signIn()->assertRedirect('/');
 
     expect(User::sole())
-        ->email->toBe('aina@webimpian.com')
+        ->email->toBe('aina@example.com')
         ->sso_sub->toBe('staff-uuid-1')
         ->role->toBe('viewer')
         ->and(Auth::check())->toBeTrue();
@@ -33,7 +33,7 @@ it('holds new accounts until approved in pending-approval mode', function () {
     $this->signIn()->assertForbidden()->assertSee('needs to approve');
     $this->assertGuest();
 
-    $this->artisan('sso:approve', ['email' => 'AINA@webimpian.com'])->assertSuccessful();
+    $this->artisan('sso:approve', ['email' => 'AINA@example.com'])->assertSuccessful();
 
     $this->signIn()->assertRedirect('/');
     $this->assertAuthenticated();
@@ -41,7 +41,7 @@ it('holds new accounts until approved in pending-approval mode', function () {
 
 it('maps portal roles to app roles on every sign-in', function () {
     config(['sso.role_map' => 'admin:manager, member:viewer', 'sso.default_role' => 'guest']);
-    $user = User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com', 'role' => 'owner']);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'role' => 'owner']);
 
     $this->signIn(['roles' => ['member', 'admin', 'unmapped']]);
     expect($user->fresh()->role)->toBe('viewer,manager');
@@ -52,7 +52,7 @@ it('maps portal roles to app roles on every sign-in', function () {
 
 it('leaves roles alone without a role map', function () {
     config(['sso.default_role' => 'viewer']);
-    $user = User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com', 'role' => 'owner']);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'role' => 'owner']);
 
     $this->signIn(['roles' => ['member']]);
 
@@ -60,7 +60,7 @@ it('leaves roles alone without a role map', function () {
 });
 
 it('lets the app keep its own sign-in rules', function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
 
     Sso::resolveUsersUsing(function (array $claims) {
         throw SsoException::refuse('Your access to this app was removed.');
@@ -71,19 +71,19 @@ it('lets the app keep its own sign-in rules', function () {
 });
 
 it('copies the portal name and email onto the account at every sign-in', function () {
-    $user = User::create(['name' => 'Old Name', 'email' => 'old@webimpian.com', 'sso_sub' => 'staff-uuid-1']);
+    $user = User::create(['name' => 'Old Name', 'email' => 'old@example.com', 'sso_sub' => 'staff-uuid-1']);
 
-    $this->signIn(['name' => 'Aina Rahman', 'email' => 'aina@webimpian.com'])->assertRedirect('/');
+    $this->signIn(['name' => 'Aina Rahman', 'email' => 'aina@example.com'])->assertRedirect('/');
 
-    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('aina@webimpian.com');
+    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('aina@example.com');
 });
 
 it('keeps the old email when another account has the new one, or when turned off', function () {
-    $user = User::create(['name' => 'Aina', 'email' => 'old@webimpian.com', 'sso_sub' => 'staff-uuid-1']);
-    User::create(['name' => 'Someone Else', 'email' => 'aina@webimpian.com']);
+    $user = User::create(['name' => 'Aina', 'email' => 'old@example.com', 'sso_sub' => 'staff-uuid-1']);
+    User::create(['name' => 'Someone Else', 'email' => 'aina@example.com']);
 
     $this->signIn(['name' => 'Aina Rahman'])->assertRedirect('/');
-    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('old@webimpian.com');
+    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('old@example.com');
 
     config(['sso.sync_profile' => false]);
     $this->post('auth/sso/logout');

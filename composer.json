@@ -1,6 +1,6 @@
 {
     "name": "webimpian/laravel-sso",
-    "description": "Sign staff in to a Laravel app through the Web Impian SSO portal.",
+    "description": "Sign staff in to a Laravel app through an OIDC SSO portal, with access checks, back-channel logout and staff management.",
     "keywords": [
         "laravel",
         "sso",

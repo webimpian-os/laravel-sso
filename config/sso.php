@@ -1,7 +1,8 @@
 <?php
 
 return [
-    'issuer' => env('SSO_ISSUER', 'https://internal.webimpian.com'),
+    // Required: the SSO portal's URL, e.g. https://sso.example.com.
+    'issuer' => env('SSO_ISSUER'),
 
     'client_id' => env('SSO_CLIENT_ID'),
 

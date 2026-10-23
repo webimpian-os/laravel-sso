@@ -61,7 +61,7 @@ class FakePortal extends Portal
 
     public function endSessionUrl(): string
     {
-        return static::issuer().'/oauth/logout';
+        return rtrim((string) (config('sso.issuer') ?: 'https://sso.test'), '/').'/oauth/logout';
     }
 
     public function reachable(): bool

@@ -6,7 +6,7 @@
 ![Filament 3 to 5](https://img.shields.io/badge/Filament-3%E2%80%935-FDAE4B)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
-Sign staff in to a Laravel app through the Web Impian SSO portal. The portal handles sign-in, two-step verification and who may open the app. The app keeps its own users and roles.
+Sign staff in to a Laravel app through an OpenID Connect SSO portal. The portal handles sign-in, two-step verification and who may open the app. The app keeps its own users and roles.
 
 You need the app registered in the portal, with its client ID and secret.
 
@@ -22,7 +22,7 @@ The migration adds `sso_sub` and `sso_pending` to the users table.
 Copy the `.env` block from the app's Connection tab in the portal:
 
 ```env
-SSO_ISSUER=https://internal.webimpian.com
+SSO_ISSUER=https://sso.example.com
 SSO_CLIENT_ID=your-client-id
 SSO_CLIENT_SECRET=your-client-secret
 ```
@@ -72,7 +72,7 @@ The idle timeout and check interval are set per app in the portal. Sessions that
 |---|---|
 | `existing-only` (default) | "Ask an admin of this app to add you" |
 | `auto` | The account is created, with `SSO_DEFAULT_ROLE` if set |
-| `pending-approval` | The account is created but held until `php artisan sso:approve someone@webimpian.com` |
+| `pending-approval` | The account is created but held until `php artisan sso:approve someone@example.com` |
 
 To change how accounts are found or created, set callbacks in `AppServiceProvider::boot()`:
 
@@ -122,7 +122,7 @@ A role map or `SSO_WORKOS_ID_COLUMN` adds the `staff` scope, which an admin must
 An app can manage its own staff once an admin turns on **Can manage staff** on its Access tab.
 
 ```php
-$staff = Sso::addStaff('aina@webimpian.com', 'Aina', 'Rahman');
+$staff = Sso::addStaff('aina@example.com', 'Aina', 'Rahman');
 User::create(['name' => $staff['name'], 'email' => $staff['email'], 'sso_sub' => $staff['sub']]);
 
 Sso::removeStaff($user->sso_sub);
@@ -193,7 +193,7 @@ $this->followingRedirects()->get('/dashboard')->assertOk();
 
 | Setting | Default |
 |---|---|
-| `SSO_ISSUER` | `https://internal.webimpian.com` |
+| `SSO_ISSUER` | required, the portal's URL |
 | `SSO_REDIRECT_URI` | `/auth/sso/callback` on this app |
 | `SSO_SCOPES` | `openid profile email` |
 | `SSO_PROVISIONING` | `existing-only` |

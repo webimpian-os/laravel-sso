@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use LogicException;
 use Throwable;
 use UnexpectedValueException;
 
@@ -21,7 +22,13 @@ class Portal
 
     public static function issuer(): string
     {
-        return rtrim((string) config('sso.issuer'), '/');
+        $issuer = rtrim((string) config('sso.issuer'), '/');
+
+        if ($issuer === '') {
+            throw new LogicException('Set SSO_ISSUER to the SSO portal URL.');
+        }
+
+        return $issuer;
     }
 
     public static function redirectUri(): string

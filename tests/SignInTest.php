@@ -3,6 +3,7 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Webimpian\Sso\Portal;
 use Webimpian\Sso\Tests\User;
 
 it('sends staff to the portal with PKCE, state and nonce', function () {
@@ -21,7 +22,7 @@ it('sends staff to the portal with PKCE, state and nonce', function () {
 });
 
 it('swaps the code with the verifier and signs the person in', function () {
-    $user = User::create(['name' => 'Aina', 'email' => 'Aina@webimpian.com']);
+    $user = User::create(['name' => 'Aina', 'email' => 'Aina@example.com']);
 
     $this->signIn()->assertRedirect('/');
 
@@ -35,17 +36,17 @@ it('swaps the code with the verifier and signs the person in', function () {
 });
 
 it('finds people by sub after the first sign-in, whatever their email', function () {
-    $user = User::create(['name' => 'Aina', 'email' => 'old@webimpian.com', 'sso_sub' => 'staff-uuid-1']);
+    $user = User::create(['name' => 'Aina', 'email' => 'old@example.com', 'sso_sub' => 'staff-uuid-1']);
 
-    $this->signIn(['email' => 'aina@webimpian.com']);
+    $this->signIn(['email' => 'aina@example.com']);
 
     expect(Auth::id())->toBe($user->id);
 });
 
 it('links by WorkOS id before email for apps moving off their own WorkOS login', function () {
     config(['sso.workos_id_column' => 'workos_id']);
-    User::create(['name' => 'Same email', 'email' => 'aina@webimpian.com']);
-    $user = User::create(['name' => 'Aina', 'email' => 'aina.old@webimpian.com', 'workos_id' => 'user_01ABC']);
+    User::create(['name' => 'Same email', 'email' => 'aina@example.com']);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina.old@example.com', 'workos_id' => 'user_01ABC']);
 
     $query = $this->portalQuery($this->get('auth/sso/login'));
     expect($query['scope'])->toBe('openid profile email staff');
@@ -57,7 +58,7 @@ it('links by WorkOS id before email for apps moving off their own WorkOS login',
 });
 
 it('never links an email that already belongs to another person', function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com', 'sso_sub' => 'someone-else']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'sso_sub' => 'someone-else']);
 
     $this->signIn()->assertForbidden()->assertSee('belongs to another account');
 
@@ -65,7 +66,7 @@ it('never links an email that already belongs to another person', function () {
 });
 
 it('rejects a token that is not for this sign-in', function (array $claims, ?string $signedWith) {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
 
     $this->signIn($claims, sign: fn (array $payload) => $this->sign($payload, 'key-1', $signedWith))->assertStatus(502);
 
@@ -86,7 +87,7 @@ it('refuses a callback whose state it never sent', function () {
 });
 
 it('picks up a rotated signing key without a restart', function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
     $this->signIn();
     Auth::logout();
 
@@ -97,7 +98,7 @@ it('picks up a rotated signing key without a restart', function () {
 });
 
 it('opens through the sign-in URL and returns to the page asked for', function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
 
     $this->get('auth/sso/login?'.http_build_query(['iss' => 'https://portal.test', 'target_link_uri' => 'http://localhost/dashboard']));
 
@@ -105,7 +106,7 @@ it('opens through the sign-in URL and returns to the page asked for', function (
 });
 
 it('ignores a target on another site', function () {
-    User::create(['name' => 'Aina', 'email' => 'aina@webimpian.com']);
+    User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
 
     $this->get('auth/sso/login?'.http_build_query(['iss' => 'https://portal.test', 'target_link_uri' => 'https://evil.test/']));
 
@@ -114,4 +115,10 @@ it('ignores a target on another site', function () {
 
 it('refuses a sign-in URL from another issuer', function () {
     $this->get('auth/sso/login?iss=https://evil.test')->assertStatus(400);
+});
+
+it('asks for SSO_ISSUER when it is missing', function () {
+    config(['sso.issuer' => null]);
+
+    expect(fn () => Portal::issuer())->toThrow(LogicException::class, 'Set SSO_ISSUER to the SSO portal URL.');
 });

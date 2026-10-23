@@ -106,7 +106,7 @@ abstract class TestCase extends Orchestra
             'aud' => 'app-client',
             'sub' => 'staff-uuid-1',
             'sid' => 'session-1',
-            'email' => 'aina@webimpian.com',
+            'email' => 'aina@example.com',
             'name' => 'Aina',
             'iat' => time(),
             'exp' => time() + 3600,
