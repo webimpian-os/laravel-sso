@@ -23,7 +23,7 @@ class KeepSsoSession
         $now = now()->getTimestamp();
         $idle = isset($sso['idle_timeout']) && $now - $sso['active_at'] > $sso['idle_timeout'];
 
-        if ($idle || (isset($sso['sid']) && Cache::has(Sso::endedKey($sso['sid'])))) {
+        if ($idle || (isset($sso['sid']) && Cache::has(Sso::endedKey($sso['sid']))) || (isset($sso['sub']) && Cache::has(Sso::revokedKey($sso['sub'])))) {
             return $this->signInAgain($request, $idle);
         }
 

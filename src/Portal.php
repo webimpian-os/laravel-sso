@@ -87,8 +87,8 @@ class Portal
     {
         $claims = $this->verify($logoutToken);
 
-        // A nonce marks an ID token, which must never pass as a logout token.
-        if (! isset($claims['events'][self::LOGOUT_EVENT]) || isset($claims['nonce']) || ! is_string($claims['sid'] ?? null)) {
+        // A nonce marks an ID token; a revoke notice has no sid.
+        if (! isset($claims['events'][self::LOGOUT_EVENT]) || isset($claims['nonce']) || (! is_string($claims['sid'] ?? null) && ! is_bool($claims['revoked'] ?? null))) {
             throw $this->fault('Not a back-channel logout token');
         }
 

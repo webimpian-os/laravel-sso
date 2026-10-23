@@ -106,4 +106,9 @@ class Sso
     {
         return 'sso.ended.'.hash('sha256', $sid);
     }
+
+    public static function revokedKey(string $sub): string
+    {
+        return 'sso.revoked.'.hash('sha256', $sub);
+    }
 }

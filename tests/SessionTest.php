@@ -1,5 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
+use Webimpian\Sso\Events\StaffRestored;
+use Webimpian\Sso\Events\StaffRevoked;
+use Webimpian\Sso\Sso;
 use Webimpian\Sso\Tests\User;
 
 beforeEach(function () {
@@ -115,4 +120,23 @@ it('renews the check after a silent sign-in succeeds', function () {
     $this->signIn(['access_check_interval' => 600])->assertRedirect('http://localhost/dashboard');
 
     $this->get('dashboard')->assertOk();
+});
+
+it('tells the app when the portal revokes or restores someone, and ends their sessions', function () {
+    Event::fake([StaffRevoked::class, StaffRestored::class]);
+    $this->signIn();
+
+    $this->post('auth/sso/backchannel-logout', ['logout_token' => $this->logoutToken(['sid' => null, 'revoked' => true])])->assertOk();
+
+    Event::assertDispatched(StaffRevoked::class, fn (StaffRevoked $event) => $event->user->email === 'aina@webimpian.com');
+    $this->get('dashboard')->assertRedirect('http://localhost/auth/sso/login');
+
+    $this->post('auth/sso/backchannel-logout', ['logout_token' => $this->logoutToken(['sid' => null, 'revoked' => false, 'jti' => 'logout-2'])])->assertOk();
+
+    Event::assertDispatched(StaffRestored::class);
+    $this->assertFalse(Cache::has(Sso::revokedKey('staff-uuid-1')));
+});
+
+it('rejects a logout token with neither a session nor a revoke', function () {
+    $this->post('auth/sso/backchannel-logout', ['logout_token' => $this->logoutToken(['sid' => null])])->assertStatus(400);
 });

@@ -76,6 +76,7 @@ class SignInController
 
         $request->session()->put('sso', [
             'sid' => is_string($claims['sid'] ?? null) ? $claims['sid'] : null,
+            'sub' => $claims['sub'],
             'id_token' => $idToken,
             'idle_timeout' => static::seconds($claims['idle_timeout'] ?? null),
             'check_interval' => static::seconds($claims['access_check_interval'] ?? null),
