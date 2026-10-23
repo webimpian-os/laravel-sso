@@ -98,19 +98,13 @@ class Portal
     // Returns sub, email, name, workos_user_id, created, access and access_reason.
     public function addStaff(string $email, string $firstName, ?string $lastName = null): array
     {
-        try {
-            $response = $this->http()
-                ->withBasicAuth((string) config('sso.client_id'), (string) config('sso.client_secret'))
-                ->post(static::issuer().'/api/staff', array_filter(['email' => $email, 'first_name' => $firstName, 'last_name' => $lastName]));
-        } catch (ConnectionException $e) {
-            throw $this->fault('The portal could not be reached', $e);
-        }
+        return $this->staffApi('POST', '/api/staff', array_filter(['email' => $email, 'first_name' => $firstName, 'last_name' => $lastName]), "The portal didn't add them");
+    }
 
-        if (! $response->successful()) {
-            throw new SsoException($response->json('error_description') ?? $response->json('message') ?? "The portal didn't add them (HTTP {$response->status()}).", $response->status());
-        }
-
-        return $response->json();
+    // Returns sub, removed, access and access_reason.
+    public function removeStaff(string $sub): array
+    {
+        return $this->staffApi('DELETE', '/api/staff/'.rawurlencode($sub), [], "The portal didn't remove them");
     }
 
     // Uncached, so a portal outage is seen before staff are sent there.
@@ -212,6 +206,23 @@ class Portal
     private function cacheKey(string $name): string
     {
         return 'sso.'.$name.'.'.md5(static::issuer());
+    }
+
+    private function staffApi(string $method, string $path, array $data, string $failed): array
+    {
+        try {
+            $response = $this->http()
+                ->withBasicAuth((string) config('sso.client_id'), (string) config('sso.client_secret'))
+                ->send($method, static::issuer().$path, $data === [] ? [] : ['json' => $data]);
+        } catch (ConnectionException $e) {
+            throw $this->fault('The portal could not be reached', $e);
+        }
+
+        if (! $response->successful()) {
+            throw new SsoException($response->json('error_description') ?? $response->json('message') ?? "{$failed} (HTTP {$response->status()}).", $response->status());
+        }
+
+        return $response->json();
     }
 
     // Staff see one plain message; the reason goes to the log.

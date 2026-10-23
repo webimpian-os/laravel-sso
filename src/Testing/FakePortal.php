@@ -6,8 +6,10 @@ use Webimpian\Sso\Portal;
 
 class FakePortal extends Portal
 {
-    // Each addStaff() call, for the app's tests to check.
+    // Each addStaff() and removeStaff() call, for the app's tests to check.
     public array $added = [];
+
+    public array $removed = [];
 
     public function __construct(private array $claims = []) {}
 
@@ -48,6 +50,13 @@ class FakePortal extends Portal
             'access' => true,
             'access_reason' => null,
         ];
+    }
+
+    public function removeStaff(string $sub): array
+    {
+        $this->removed[] = $sub;
+
+        return ['sub' => $sub, 'removed' => true, 'access' => false, 'access_reason' => null];
     }
 
     public function endSessionUrl(): string

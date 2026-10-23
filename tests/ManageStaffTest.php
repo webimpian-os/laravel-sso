@@ -30,3 +30,20 @@ it('adds staff without the portal when faked', function () {
         ->and($fake->added)->toBe([['email' => 'Aina@webimpian.com', 'first_name' => 'Aina', 'last_name' => 'Rahman']]);
     Http::assertNothingSent();
 });
+
+it('removes staff from the app through the portal', function () {
+    Http::fake(['portal.test/api/staff/*' => Http::response(['sub' => 'staff-uuid-1', 'removed' => true, 'access' => false, 'access_reason' => null])]);
+
+    expect(Sso::removeStaff('staff-uuid-1'))->toMatchArray(['removed' => true, 'access' => false]);
+    Http::assertSent(fn (Request $request) => $request->method() === 'DELETE'
+        && $request->url() === 'https://portal.test/api/staff/staff-uuid-1'
+        && $request->hasHeader('Authorization', 'Basic '.base64_encode('app-client:app-secret')));
+});
+
+it('removes staff without the portal when faked', function () {
+    $fake = Sso::fake();
+
+    expect(Sso::removeStaff('staff-uuid-1'))->toMatchArray(['removed' => true])
+        ->and($fake->removed)->toBe(['staff-uuid-1']);
+    Http::assertNothingSent();
+});

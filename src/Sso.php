@@ -39,6 +39,11 @@ class Sso
         return app(Portal::class)->addStaff($email, $firstName, $lastName);
     }
 
+    public static function removeStaff(string $sub): array
+    {
+        return app(Portal::class)->removeStaff($sub);
+    }
+
     public static function fake(array $claims = []): FakePortal
     {
         $fake = new FakePortal($claims);
