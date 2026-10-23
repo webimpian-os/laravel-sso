@@ -4,6 +4,7 @@ namespace Webimpian\Sso;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -22,6 +23,30 @@ class Accounts
         }
 
         return $user;
+    }
+
+    public static function syncProfile(Model $user, array $claims): void
+    {
+        if (! config('sso.sync_profile')) {
+            return;
+        }
+
+        $name = is_string($claims['name'] ?? null) && $claims['name'] !== '' ? $claims['name'] : null;
+        $email = is_string($claims['email'] ?? null) && $claims['email'] !== '' ? $claims['email'] : null;
+
+        if ($email !== null && Str::lower((string) $user->email) !== Str::lower($email)
+            && $user->newQuery()->whereKeyNot($user->getKey())->whereRaw('lower(email) = ?', [Str::lower($email)])->exists()) {
+            Log::warning('SSO kept the old email because another account in this app has the new one', ['user_id' => $user->getKey()]);
+            $email = null;
+        }
+
+        // Some users tables have no name column.
+        $columns = array_flip($user->getConnection()->getSchemaBuilder()->getColumnListing($user->getTable()));
+        $user->forceFill(array_intersect_key(array_filter(['name' => $name, 'email' => $email], fn (?string $value) => $value !== null), $columns));
+
+        if ($user->isDirty()) {
+            $user->save();
+        }
     }
 
     public static function syncRoles(Model $user, array $claims): void

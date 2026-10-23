@@ -21,6 +21,9 @@ return [
     // Portal role to app role, e.g. "admin:admin,member:viewer". Applied on every sign-in.
     'role_map' => env('SSO_ROLE_MAP'),
 
+    // Copies the portal's name and email onto the account at every sign-in.
+    'sync_profile' => (bool) env('SSO_SYNC_PROFILE', true),
+
     // The users column holding WorkOS user ids, for apps moving off their own WorkOS login.
     'workos_id_column' => env('SSO_WORKOS_ID_COLUMN'),
 

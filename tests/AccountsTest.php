@@ -69,3 +69,24 @@ it('lets the app keep its own sign-in rules', function () {
     $this->signIn()->assertForbidden()->assertSee('Your access to this app was removed.');
     $this->assertGuest();
 });
+
+it('copies the portal name and email onto the account at every sign-in', function () {
+    $user = User::create(['name' => 'Old Name', 'email' => 'old@webimpian.com', 'sso_sub' => 'staff-uuid-1']);
+
+    $this->signIn(['name' => 'Aina Rahman', 'email' => 'aina@webimpian.com'])->assertRedirect('/');
+
+    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('aina@webimpian.com');
+});
+
+it('keeps the old email when another account has the new one, or when turned off', function () {
+    $user = User::create(['name' => 'Aina', 'email' => 'old@webimpian.com', 'sso_sub' => 'staff-uuid-1']);
+    User::create(['name' => 'Someone Else', 'email' => 'aina@webimpian.com']);
+
+    $this->signIn(['name' => 'Aina Rahman'])->assertRedirect('/');
+    expect($user->fresh())->name->toBe('Aina Rahman')->email->toBe('old@webimpian.com');
+
+    config(['sso.sync_profile' => false]);
+    $this->post('auth/sso/logout');
+    $this->signIn(['name' => 'Renamed'])->assertRedirect('/');
+    expect($user->fresh()->name)->toBe('Aina Rahman');
+});

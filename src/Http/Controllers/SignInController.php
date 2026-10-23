@@ -64,6 +64,7 @@ class SignInController
             throw $e;
         }
 
+        Accounts::syncProfile($user, $claims);
         Accounts::syncRoles($user, $claims);
 
         $guard = Sso::guard();
