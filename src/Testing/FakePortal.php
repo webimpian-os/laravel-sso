@@ -11,7 +11,7 @@ class FakePortal extends Portal
 
     public function __construct(private array $claims = []) {}
 
-    // Straight back to the callback, as the portal does for someone already signed in.
+    // As the portal does for someone already signed in.
     public function authorizeUrl(array $query): string
     {
         return $query['redirect_uri'].'?'.http_build_query(['code' => 'fake', 'state' => $query['state']]);

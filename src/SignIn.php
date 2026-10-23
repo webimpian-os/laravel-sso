@@ -7,7 +7,6 @@ use Illuminate\Support\Str;
 
 class SignIn
 {
-    // prompt "none" is the silent access check; "login" asks for a full sign-in.
     public static function url(Request $request, ?string $prompt = null): string
     {
         $state = Str::random(40);

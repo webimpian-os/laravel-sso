@@ -19,7 +19,6 @@ class SignOut
         }
     }
 
-    // Null when the session wasn't signed in through the portal.
     public static function response(Request $request): ?Response
     {
         $idToken = $request->attributes->get('sso_id_token');

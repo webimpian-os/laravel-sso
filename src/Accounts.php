@@ -84,7 +84,7 @@ class Accounts
         $user = new $model;
         $user->forceFill(['name' => $claims['name'] ?? $claims['email'] ?? 'Staff', 'email' => $claims['email'] ?? null]);
 
-        // Sign-in is through the portal, so this password is never used.
+        // Never used: sign-in is through the portal.
         if ($user->getConnection()->getSchemaBuilder()->hasColumn($user->getTable(), 'password')) {
             $user->forceFill(['password' => Hash::make(Str::random(40))]);
         }

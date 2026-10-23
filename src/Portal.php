@@ -127,14 +127,13 @@ class Portal
     {
         $keys = $this->keys();
 
-        // A new kid means a rotated key; refetching at most once a minute stops forged kids hammering the portal.
+        // A new kid means a rotated key; once a minute at most, so forged kids can't hammer the portal.
         if (! isset($keys[$this->kid($jwt)]) && Cache::add($this->cacheKey('jwks-refreshed'), true, 60)) {
             Cache::forget($this->cacheKey('jwks'));
             $keys = $this->keys();
         }
 
         $leeway = JWT::$leeway;
-        // Room for clock drift between the app and the portal.
         JWT::$leeway = 60;
 
         try {

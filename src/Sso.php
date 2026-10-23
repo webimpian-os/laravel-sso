@@ -22,13 +22,13 @@ class Sso
         static::$resolveUser = $callback;
     }
 
-    // fn (array $claims): User builds the unsaved account for a first sign-in.
+    // fn (array $claims): User, returned unsaved.
     public static function createUsersUsing(?Closure $callback): void
     {
         static::$createUser = $callback;
     }
 
-    // fn (User $user, array $roles) gives the mapped roles; models with syncRoles() need none.
+    // fn (User $user, array $roles); models with syncRoles() need none.
     public static function syncRolesUsing(?Closure $callback): void
     {
         static::$syncRoles = $callback;
@@ -48,7 +48,7 @@ class Sso
         return $fake;
     }
 
-    // True when this session was signed in through the portal, not a local login.
+    // Signed in through the portal, not a local login.
     public static function check(): bool
     {
         $request = request();
