@@ -131,6 +131,7 @@ Sso::removeStaff($user->sso_sub);
 - `addStaff()` creates new people in WorkOS and the portal, and finds people already on staff. Nobody is emailed, so tell them to sign in.
 - For an app with an access list, `addStaff()` adds them to it, and `removeStaff()` takes them off and signs them out of the app at once.
 - For an app open to all staff, or by role or group, that access stays with portal admins, and `access_reason` says so.
+- People outside the company open only the apps whose list names them. `addStaff()` can't create them, but both calls add or remove an existing one on this app's list, whatever its access mode.
 - Refusals throw `SsoException` with the portal's reason and status: 409 revoked, 422 not a company address, 503 WorkOS down.
 
 ## Revoked staff
