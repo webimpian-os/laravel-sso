@@ -1,0 +1,55 @@
+{
+    "name": "webimpian/laravel-sso",
+    "description": "Sign staff in to a Laravel app through the Web Impian SSO portal.",
+    "keywords": [
+        "laravel",
+        "sso",
+        "oidc",
+        "openid-connect"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Khairul Imran",
+            "email": "infrastructure@webimpian.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "firebase/php-jwt": "^6.10|^7.0",
+        "guzzlehttp/guzzle": "^7.2",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+        "pestphp/pest": "^2.0|^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webimpian\\Sso\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Webimpian\\Sso\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webimpian\\Sso\\SsoServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
