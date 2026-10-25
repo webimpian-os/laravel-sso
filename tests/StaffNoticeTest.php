@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Webimpian\Sso\Portal;
 use Webimpian\Sso\Sso;
 use Webimpian\Sso\SsoException;
@@ -87,6 +88,20 @@ it('refuses to link an unverified email', function () {
     applyStaff($this)->assertStatus(422)->assertJsonPath('status', 'refused');
     expect(User::first()->sso_sub)->toBeNull();
     expect(applyStaff($this)->json('reason'))->toContain("isn't verified")->toEndWith('Ask an admin of this app to verify it.');
+});
+
+it('refuses to link by email when the app has no email_verified_at column', function () {
+    Schema::table('users', fn ($table) => $table->dropColumn('email_verified_at'));
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
+
+    applyStaff($this)->assertStatus(422)->assertJsonPath('status', 'refused');
+    notice($this, 'status', ['subs' => ['sub-1'], 'people' => ['sub-1' => ['email' => 'aina@example.com']]])->assertJsonPath('people.sub-1.status', 'unverified');
+    expect($user->fresh()->sso_sub)->toBeNull();
+
+    config(['sso.link_unverified_emails' => true]);
+
+    applyStaff($this)->assertOk();
+    expect($user->fresh()->sso_sub)->toBe('sub-1');
 });
 
 it('links and finds an unverified email when the app allows it', function () {

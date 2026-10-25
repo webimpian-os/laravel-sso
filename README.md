@@ -195,7 +195,7 @@ Good to know:
 - Make the app's staff pages read-only: no adding, editing or deleting staff in the app, since the portal does that and copies their name and email. The app keeps managing its customers.
 - The default remove needs a nullable timestamp column, `access_revoked_at` (or `SSO_REVOKED_COLUMN`), which the package migration doesn't add. Sign-in is refused while it's set.
 - Refuse anything with `SsoException::refuse('reason')`. The portal shows the reason.
-- Only a verified email is linked, also at first sign-in with sync on. A staff-only app can set `SSO_LINK_UNVERIFIED_EMAILS=true`; never where customers sign up.
+- Email links need `email_verified_at` set, also at first sign-in with sync on. Staff-only apps can skip this with `SSO_LINK_UNVERIFIED_EMAILS=true`.
 - An email that only matches a deleted account is refused with `code: deleted_account`. The portal can resend with `restore_deleted: true` to bring that account back on purpose.
 - If you use `Sso::resolveUsersUsing()`, call `Accounts::resolve()` inside it, so the "access removed" refusal still applies.
 - Replay protection uses the app's cache, so production needs a shared, atomic store such as Redis or the database.

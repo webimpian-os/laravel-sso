@@ -153,9 +153,15 @@ class Accounts
         if ($user === null && is_string($email)) {
             $user = (clone $query)->whereRaw('lower(email) = ?', [Str::lower($email)])->first();
 
-            // An unverified address may belong to someone else.
-            if ($user !== null && $requireVerifiedEmail && ! config('sso.link_unverified_emails') && static::hasColumn($user, 'email_verified_at') && $user->email_verified_at === null) {
-                throw SsoException::refuse("This email isn't verified in this app, so it can't be linked. Ask an admin of this app to verify it.");
+            // An unverified address may belong to someone else; with no column, the app can't tell.
+            if ($user !== null && $requireVerifiedEmail && ! config('sso.link_unverified_emails')) {
+                if (! static::hasColumn($user, 'email_verified_at')) {
+                    throw SsoException::refuse("This app doesn't verify emails, so this account can't be linked by email. Ask an admin of this app to check it.");
+                }
+
+                if ($user->email_verified_at === null) {
+                    throw SsoException::refuse("This email isn't verified in this app, so it can't be linked. Ask an admin of this app to verify it.");
+                }
             }
         }
 
