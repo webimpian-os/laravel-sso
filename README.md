@@ -49,7 +49,7 @@ Then add these URLs to the app in the portal:
 | Sign-in URL | `https://your-app/auth/sso/login` |
 | Back-channel logout URL | `https://your-app/auth/sso/backchannel-logout` |
 
-The portal calls the back-channel URL server to server, so let it through Cloudflare.
+The portal calls the back-channel URL server to server, so let it through any WAF or bot protection.
 
 ## How it works
 
@@ -117,9 +117,11 @@ Sso::syncRolesUsing(fn (User $user, array $roles) => $user->update(['role' => $r
 
 A role map or `SSO_WORKOS_ID_COLUMN` adds the `staff` scope, which an admin must allow on the app's Access tab.
 
-## Adding and removing staff
+## Adding staff from the app
 
-An app can manage its own staff once an admin turns on **Can manage staff** on its Access tab.
+Only for apps the portal doesn't manage (`SSO_STAFF_SYNC` off). With staff managed from the portal, people are added and removed there instead.
+
+An app can add and remove its own staff once an admin turns on **Can manage staff** on its Access tab.
 
 ```php
 $staff = Sso::addStaff('aina@example.com', 'Aina', 'Rahman');
@@ -147,6 +149,57 @@ Event::listen(StaffRestored::class, fn (StaffRestored $event) => $event->user->u
 ```
 
 The notice comes through the back-channel logout URL. Without a listener, the account stays as it is and the person can't sign in.
+
+## Staff managed from the portal
+
+The portal can add people to the app, set their level, update their name and email, and remove them. It posts signed notices to `POST /auth/sso/staff`, on the same host as the app's sign-in URL. This is off by default:
+
+```env
+SSO_STAFF_SYNC=true
+# SSO_STAFF_DELETE=true   # a separate opt-in: let the portal delete accounts
+```
+
+Tell the package the app's levels and what each notice does, in `AppServiceProvider::boot()`:
+
+```php
+Sso::staffLevelsUsing(fn () => ['admin' => 'Admin', 'agent' => 'Agent']);
+
+Sso::applyStaffUsing(fn (User $user, string $level, bool $created) => $user->forceFill([
+    'role' => $level,
+    'team_id' => $created ? Team::default()->id : $user->team_id,
+])->save());
+
+Sso::staffLevelUsing(fn (User $user) => $user->role);
+
+Sso::removeStaffUsing(fn (User $user) => $user->update(['suspended_at' => now()]));
+
+Sso::deleteStaffUsing(function (User $user) {
+    if ($user->orders()->exists()) {
+        throw SsoException::refuse('This person has orders. Remove them instead.');
+    }
+
+    $user->delete(); // a soft delete: the model uses SoftDeletes
+});
+```
+
+| Notice | What the package does |
+|---|---|
+| Apply a level | Finds the person by `sso_sub` (restoring a soft-deleted row), then the WorkOS ID column, then a verified email, or creates them. Runs `applyStaffUsing()`, and clears `sso_pending` and the revoked column, in one transaction. |
+| Remove | Runs `removeStaffUsing()`, or by default sets the revoked column. Their open session ends on the next request. |
+| Delete | Only with `SSO_STAFF_DELETE=true`. Runs `deleteStaffUsing()`, or by default soft deletes a model that uses `SoftDeletes`, and refuses otherwise. |
+| Name or email changed | Updates them, as a sign-in does. |
+| Status | Answers each person's level from `staffLevelUsing()`. |
+
+Good to know:
+
+- Make the app's staff pages read-only: no adding, editing or deleting staff in the app, since the portal does that and copies their name and email. The app keeps managing its customers.
+- The default remove needs a nullable timestamp column, `access_revoked_at` (or `SSO_REVOKED_COLUMN`), which the package migration doesn't add. Sign-in is refused while it's set.
+- Refuse anything with `SsoException::refuse('reason')`. The portal shows the reason.
+- An unverified email is refused, not skipped. With sync on, a first sign-in links only a verified email too.
+- An email that only matches a deleted account is refused with `code: deleted_account`. The portal can resend with `restore_deleted: true` to bring that account back on purpose.
+- If you use `Sso::resolveUsersUsing()`, call `Accounts::resolve()` inside it, so the "access removed" refusal still applies.
+- Replay protection uses the app's cache, so production needs a shared, atomic store such as Redis or the database.
+- Let `POST /auth/sso/staff` through any WAF or bot protection, like the back-channel URL.
 
 ## Filament
 
@@ -189,6 +242,12 @@ Sso::fake(['email' => $user->email, 'roles' => ['admin']]);
 $this->followingRedirects()->get('/dashboard')->assertOk();
 ```
 
+After `Sso::fake()`, staff notices take their claims as JSON in place of a signed token:
+
+```php
+$this->post('/auth/sso/staff', ['staff_token' => json_encode(['action' => 'levels'])]);
+```
+
 ## Configuration
 
 | Setting | Default |
@@ -204,6 +263,9 @@ $this->followingRedirects()->get('/dashboard')->assertOk();
 | `SSO_POST_LOGOUT_REDIRECT_URI` | the home page; must be a sign-out URI on the app in the portal |
 | `SSO_HOME` | `/`, where staff land when no page was asked for |
 | `SSO_GUARD` | the default guard |
+| `SSO_STAFF_SYNC` | `false`; `true` accepts staff notices from the portal |
+| `SSO_STAFF_DELETE` | `false`; `true` lets the portal delete accounts |
+| `SSO_REVOKED_COLUMN` | `access_revoked_at` |
 
 `php artisan vendor:publish --tag=sso-config` publishes the config, and `--tag=sso-views` the package's two pages.
 
