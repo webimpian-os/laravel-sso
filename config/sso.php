@@ -27,6 +27,9 @@ return [
     // For apps moving off their own WorkOS login.
     'workos_id_column' => env('SSO_WORKOS_ID_COLUMN'),
 
+    // Only for apps whose users are all staff.
+    'link_unverified_emails' => (bool) env('SSO_LINK_UNVERIFIED_EMAILS', false),
+
     // Must be one of the app's sign-out URLs in the portal; defaults to the home page.
     'post_logout_redirect_uri' => env('SSO_POST_LOGOUT_REDIRECT_URI'),
 

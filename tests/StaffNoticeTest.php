@@ -89,6 +89,17 @@ it('refuses to link an unverified email', function () {
     expect(applyStaff($this)->json('reason'))->toContain("isn't verified")->toEndWith('Ask an admin of this app to verify it.');
 });
 
+it('links and finds an unverified email when the app allows it', function () {
+    config(['sso.link_unverified_emails' => true]);
+    Sso::staffLevelUsing(fn ($user) => $user->role);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'role' => 'admin']);
+
+    notice($this, 'status', ['subs' => ['sub-1'], 'people' => ['sub-1' => ['email' => 'aina@example.com']]])->assertJsonPath('people.sub-1.status', 'active');
+    applyStaff($this)->assertOk();
+
+    expect($user->fresh()->sso_sub)->toBe('sub-1')->and(User::count())->toBe(1);
+});
+
 it('creates a new user', function () {
     applyStaff($this, [], $created)->assertOk();
 

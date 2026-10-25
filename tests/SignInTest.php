@@ -141,6 +141,15 @@ it('links an unverified email when staff sync is off', function () {
     expect($user->fresh()->sso_sub)->toBe('staff-uuid-1');
 });
 
+it('links an unverified email when the app allows it', function () {
+    config(['sso.staff.enabled' => true, 'sso.link_unverified_emails' => true]);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
+
+    $this->signIn()->assertRedirect('/');
+
+    expect($user->fresh()->sso_sub)->toBe('staff-uuid-1');
+});
+
 it('links a verified email when staff sync is on', function () {
     config(['sso.staff.enabled' => true]);
     $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'email_verified_at' => now()]);
