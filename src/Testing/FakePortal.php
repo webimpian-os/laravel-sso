@@ -37,6 +37,11 @@ class FakePortal extends Portal
         return ['sid' => $logoutToken];
     }
 
+    public function staffClaims(string $token): array
+    {
+        return json_decode($token, true);
+    }
+
     public function addStaff(string $email, string $firstName, ?string $lastName = null): array
     {
         $this->added[] = ['email' => $email, 'first_name' => $firstName, 'last_name' => $lastName];

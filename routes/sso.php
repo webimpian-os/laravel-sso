@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Webimpian\Sso\Http\Controllers\BackchannelLogoutController;
 use Webimpian\Sso\Http\Controllers\SignInController;
 use Webimpian\Sso\Http\Controllers\SignOutController;
+use Webimpian\Sso\Http\Controllers\StaffNoticeController;
 
 Route::middleware('web')->group(function () {
     Route::get('auth/sso/login', [SignInController::class, 'start'])->name('sso.login');
@@ -13,3 +14,4 @@ Route::middleware('web')->group(function () {
 
 // Called server to server by the portal, so there is no session or CSRF token.
 Route::post('auth/sso/backchannel-logout', BackchannelLogoutController::class)->name('sso.backchannel');
+Route::post('auth/sso/staff', StaffNoticeController::class)->name('sso.staff');

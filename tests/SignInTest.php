@@ -122,3 +122,30 @@ it('asks for SSO_ISSUER when it is missing', function () {
 
     expect(fn () => Portal::issuer())->toThrow(LogicException::class, 'Set SSO_ISSUER to the SSO portal URL.');
 });
+
+it('does not link an unverified email when staff sync is on', function () {
+    config(['sso.staff.enabled' => true]);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
+
+    $this->signIn()->assertForbidden();
+
+    $this->assertGuest();
+    expect($user->fresh()->sso_sub)->toBeNull();
+});
+
+it('links an unverified email when staff sync is off', function () {
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com']);
+
+    $this->signIn()->assertRedirect('/');
+
+    expect($user->fresh()->sso_sub)->toBe('staff-uuid-1');
+});
+
+it('links a verified email when staff sync is on', function () {
+    config(['sso.staff.enabled' => true]);
+    $user = User::create(['name' => 'Aina', 'email' => 'aina@example.com', 'email_verified_at' => now()]);
+
+    $this->signIn()->assertRedirect('/');
+
+    expect($user->fresh()->sso_sub)->toBe('staff-uuid-1');
+});

@@ -4,6 +4,7 @@ namespace Webimpian\Sso\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Webimpian\Sso\Accounts;
 use Webimpian\Sso\Portal;
 use Webimpian\Sso\SignIn;
@@ -63,6 +64,9 @@ class SignInController
 
             throw $e;
         }
+
+        // The portal let them in again, so an older removal mark would only loop them out.
+        Cache::forget(Sso::revokedKey($claims['sub']));
 
         Accounts::syncProfile($user, $claims);
         Accounts::syncRoles($user, $claims);

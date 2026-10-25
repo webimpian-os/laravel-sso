@@ -2,7 +2,9 @@
 
 namespace Webimpian\Sso;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,6 +22,12 @@ class Accounts
 
         if ($user->sso_pending) {
             throw SsoException::refuse('An admin of this app needs to approve your account before you can sign in.');
+        }
+
+        $column = config('sso.staff.revoked_column');
+
+        if (config('sso.staff.enabled') && filled($column) && static::hasColumn($user, $column) && $user->{$column} !== null) {
+            throw SsoException::refuse('Your access to this app was removed.');
         }
 
         return $user;
@@ -67,27 +75,99 @@ class Accounts
         static::give($user, $roles === [] && filled($default) ? [$default] : $roles);
     }
 
+    public static function forStaff(array $claims): array
+    {
+        $model = Sso::userModel();
+        $softDeletes = in_array(SoftDeletes::class, class_uses_recursive($model), true);
+
+        $user = ($softDeletes ? $model::withTrashed() : $model::query())->where('sso_sub', $claims['sub'])->first();
+        $created = false;
+
+        if ($user !== null && method_exists($user, 'trashed') && $user->trashed()) {
+            $user->restore();
+        }
+
+        if ($user === null) {
+            $user = static::findUnlinked($model::query(), $claims, requireVerifiedEmail: true);
+
+            // A deleted row matched by email or WorkOS ID comes back only when the portal asks.
+            if ($user === null && $softDeletes) {
+                $restore = ($claims['restore_deleted'] ?? false) === true;
+                $trashed = static::findUnlinked($model::onlyTrashed(), $claims, requireVerifiedEmail: $restore);
+
+                if ($trashed !== null && ! $restore) {
+                    throw SsoException::deletedAccount();
+                }
+
+                $user = $trashed;
+            }
+
+            if ($user !== null) {
+                static::claim($user, $claims);
+
+                if (method_exists($user, 'trashed') && $user->trashed()) {
+                    $user->restore();
+                }
+            } else {
+                $user = static::make($model, $claims);
+                $user->forceFill(['sso_sub' => $claims['sub']]);
+                $created = true;
+            }
+        }
+
+        // An SSO assignment is the approval.
+        $user->forceFill(['sso_pending' => false])->save();
+
+        return [$user, $created];
+    }
+
     // First sign-in only: later ones match on sub, so a reused email can't take over an account.
     private static function link(string $model, array $claims): ?Model
     {
-        $column = config('sso.workos_id_column');
-        $workosId = $claims['workos_user_id'] ?? null;
-        $email = $claims['email'] ?? null;
-
-        $user = filled($column) && is_string($workosId) ? $model::query()->where($column, $workosId)->first() : null;
-        $user ??= is_string($email) ? $model::query()->whereRaw('lower(email) = ?', [Str::lower($email)])->first() : null;
+        // Only with staff sync on, so apps without it link as they did in v1.0.
+        $user = static::findUnlinked($model::query(), $claims, requireVerifiedEmail: (bool) config('sso.staff.enabled'));
 
         if ($user === null) {
             return null;
         }
 
+        static::claim($user, $claims);
+
+        return $user;
+    }
+
+    private static function findUnlinked(Builder $query, array $claims, bool $requireVerifiedEmail = false): ?Model
+    {
+        $column = config('sso.workos_id_column');
+        $workosId = $claims['workos_user_id'] ?? null;
+        $email = $claims['email'] ?? null;
+
+        $user = filled($column) && is_string($workosId) ? (clone $query)->where($column, $workosId)->first() : null;
+
+        if ($user === null && is_string($email)) {
+            $user = (clone $query)->whereRaw('lower(email) = ?', [Str::lower($email)])->first();
+
+            // An unverified address may belong to someone else.
+            if ($user !== null && $requireVerifiedEmail && static::hasColumn($user, 'email_verified_at') && $user->email_verified_at === null) {
+                throw SsoException::refuse("This email isn't verified in this app, so it can't be linked. Ask an admin of this app to verify it.");
+            }
+        }
+
+        return $user;
+    }
+
+    private static function claim(Model $user, array $claims): void
+    {
         if ($user->sso_sub !== null) {
             throw SsoException::refuse('This email belongs to another account in this app. Ask an admin of this app to sort it out.');
         }
 
         $user->forceFill(['sso_sub' => $claims['sub']])->save();
+    }
 
-        return $user;
+    public static function hasColumn(Model $user, string $column): bool
+    {
+        return $user->getConnection()->getSchemaBuilder()->hasColumn($user->getTable(), $column);
     }
 
     private static function create(string $model, array $claims): Model
@@ -98,10 +178,15 @@ class Accounts
             throw SsoException::refuse("You don't have an account in this app yet. Ask an admin of this app to add you.");
         }
 
-        $user = Sso::$createUser ? (Sso::$createUser)($claims) : static::newUser($model, $claims);
+        $user = static::make($model, $claims);
         $user->forceFill(['sso_sub' => $claims['sub'], 'sso_pending' => $mode === 'pending-approval'])->save();
 
         return $user;
+    }
+
+    private static function make(string $model, array $claims): Model
+    {
+        return Sso::$createUser ? (Sso::$createUser)($claims) : static::newUser($model, $claims);
     }
 
     private static function newUser(string $model, array $claims): Model
@@ -110,7 +195,7 @@ class Accounts
         $user->forceFill(['name' => $claims['name'] ?? $claims['email'] ?? 'Staff', 'email' => $claims['email'] ?? null]);
 
         // Never used: sign-in is through the portal.
-        if ($user->getConnection()->getSchemaBuilder()->hasColumn($user->getTable(), 'password')) {
+        if (static::hasColumn($user, 'password')) {
             $user->forceFill(['password' => Hash::make(Str::random(40))]);
         }
 

@@ -51,8 +51,11 @@ abstract class TestCase extends Orchestra
             $table->string('password')->nullable();
             $table->string('workos_id')->nullable();
             $table->string('role')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->timestamp('access_revoked_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         (require __DIR__.'/../database/migrations/2026_10_23_000000_add_sso_columns_to_users_table.php')->up();
@@ -78,6 +81,11 @@ abstract class TestCase extends Orchestra
         Sso::resolveUsersUsing(null);
         Sso::createUsersUsing(null);
         Sso::syncRolesUsing(null);
+        Sso::staffLevelsUsing(null);
+        Sso::applyStaffUsing(null);
+        Sso::removeStaffUsing(null);
+        Sso::deleteStaffUsing(null);
+        Sso::staffLevelUsing(null);
 
         parent::tearDown();
     }

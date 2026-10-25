@@ -16,6 +16,16 @@ class Sso
 
     public static ?Closure $syncRoles = null;
 
+    public static ?Closure $staffLevels = null;
+
+    public static ?Closure $applyStaff = null;
+
+    public static ?Closure $removeStaff = null;
+
+    public static ?Closure $deleteStaff = null;
+
+    public static ?Closure $staffLevel = null;
+
     // fn (array $claims): User; call Accounts::resolve() inside to keep the default matching.
     public static function resolveUsersUsing(?Closure $callback): void
     {
@@ -32,6 +42,36 @@ class Sso
     public static function syncRolesUsing(?Closure $callback): void
     {
         static::$syncRoles = $callback;
+    }
+
+    // fn (): array<string,string>, level ID to name.
+    public static function staffLevelsUsing(?Closure $callback): void
+    {
+        static::$staffLevels = $callback;
+    }
+
+    // fn (Model $user, string $level, bool $created): void
+    public static function applyStaffUsing(?Closure $callback): void
+    {
+        static::$applyStaff = $callback;
+    }
+
+    // fn (Model $user): void
+    public static function removeStaffUsing(?Closure $callback): void
+    {
+        static::$removeStaff = $callback;
+    }
+
+    // fn (Model $user): void
+    public static function deleteStaffUsing(?Closure $callback): void
+    {
+        static::$deleteStaff = $callback;
+    }
+
+    // fn (Model $user): ?string, the current level ID.
+    public static function staffLevelUsing(?Closure $callback): void
+    {
+        static::$staffLevel = $callback;
     }
 
     public static function addStaff(string $email, string $firstName, ?string $lastName = null): array
