@@ -136,6 +136,12 @@ class Accounts
         return $user;
     }
 
+    // Who an apply would link, without linking them.
+    public static function staffMatch(array $claims): ?Model
+    {
+        return static::findUnlinked(Sso::userModel()::query()->whereNull('sso_sub'), $claims, requireVerifiedEmail: true);
+    }
+
     private static function findUnlinked(Builder $query, array $claims, bool $requireVerifiedEmail = false): ?Model
     {
         $column = config('sso.workos_id_column');

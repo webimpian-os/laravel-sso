@@ -349,10 +349,37 @@ it('reports status for each sub', function () {
     User::create(['name' => 'B', 'email' => 'b@example.com', 'sso_sub' => 'gone', 'access_revoked_at' => now()]);
 
     notice($this, 'status', ['subs' => ['linked', 'gone', 'nobody']])->assertOk()->assertExactJson(['people' => [
-        'linked' => ['status' => 'active', 'level' => 'admin', 'level_name' => 'Admin'],
-        'gone' => ['status' => 'removed', 'level' => null, 'level_name' => null],
-        'nobody' => ['status' => 'missing', 'level' => null, 'level_name' => null],
+        'linked' => ['status' => 'active', 'level' => 'admin', 'level_name' => 'Admin', 'linked' => true],
+        'gone' => ['status' => 'removed', 'level' => null, 'level_name' => null, 'linked' => true],
+        'nobody' => ['status' => 'missing', 'level' => null, 'level_name' => null, 'linked' => false],
     ]]);
+});
+
+it('finds staff the app already has by WorkOS ID or verified email without linking them', function () {
+    config(['sso.workos_id_column' => 'workos_id']);
+    Sso::staffLevelsUsing(fn () => ['admin' => 'Admin']);
+    Sso::staffLevelUsing(fn ($user) => $user->role);
+    $byEmail = User::create(['name' => 'Aina', 'email' => 'Aina@Example.com', 'email_verified_at' => now(), 'role' => 'admin']);
+    $byWorkos = User::create(['name' => 'Ben', 'email' => 'ben@example.com', 'workos_id' => 'user_ben', 'role' => 'admin']);
+    User::create(['name' => 'Cara', 'email' => 'cara@example.com', 'role' => 'admin']);
+    User::create(['name' => 'Dan', 'email' => 'dan@example.com', 'email_verified_at' => now(), 'sso_sub' => 'someone-else', 'role' => 'admin']);
+
+    notice($this, 'status', [
+        'subs' => ['aina', 'ben', 'cara', 'dan'],
+        'people' => [
+            'aina' => ['email' => 'aina@example.com'],
+            'ben' => ['email' => 'other@example.com', 'workos_user_id' => 'user_ben'],
+            'cara' => ['email' => 'cara@example.com'],
+            'dan' => ['email' => 'dan@example.com'],
+        ],
+    ])->assertOk()->assertExactJson(['people' => [
+        'aina' => ['status' => 'active', 'level' => 'admin', 'level_name' => 'Admin', 'linked' => false],
+        'ben' => ['status' => 'active', 'level' => 'admin', 'level_name' => 'Admin', 'linked' => false],
+        'cara' => ['status' => 'unverified', 'level' => null, 'level_name' => null, 'linked' => false],
+        'dan' => ['status' => 'missing', 'level' => null, 'level_name' => null, 'linked' => false],
+    ]]);
+
+    expect($byEmail->fresh()->sso_sub)->toBeNull()->and($byWorkos->fresh()->sso_sub)->toBeNull();
 });
 
 it('falls back to the level id when the levels list lacks it', function () {

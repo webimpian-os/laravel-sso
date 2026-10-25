@@ -188,7 +188,7 @@ Sso::deleteStaffUsing(function (User $user) {
 | Remove | Runs `removeStaffUsing()`, or by default sets the revoked column. Their open session ends on the next request. |
 | Delete | Only with `SSO_STAFF_DELETE=true`. Runs `deleteStaffUsing()`, or by default soft deletes a model that uses `SoftDeletes`, and refuses otherwise. |
 | Name or email changed | Updates them, as a sign-in does. |
-| Status | Answers each person's level from `staffLevelUsing()`. |
+| Status | Answers each person's level from `staffLevelUsing()`, also for staff not linked yet (found by WorkOS ID or verified email, without linking). |
 
 Good to know:
 

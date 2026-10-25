@@ -147,11 +147,11 @@ class StaffNoticeController
     private function status(array $claims): JsonResponse
     {
         $names = (Sso::$staffLevels ?? fn () => [])();
+        $hints = is_array($claims['people'] ?? null) ? $claims['people'] : [];
         $people = [];
 
         foreach (array_unique($claims['subs']) as $sub) {
-            $user = $this->find($sub);
-            $status = $user === null ? 'missing' : ($this->isRemoved($user, $sub) ? 'removed' : 'active');
+            [$user, $status] = $this->match($sub, $hints[$sub] ?? null);
             $level = $status === 'active' && Sso::$staffLevel !== null ? (Sso::$staffLevel)($user) : null;
             $level = $level === null ? null : (string) $level;
 
@@ -159,10 +159,33 @@ class StaffNoticeController
                 'status' => $status,
                 'level' => $level,
                 'level_name' => $level === null ? null : (string) ($names[$level] ?? $level),
+                'linked' => $user !== null && $user->sso_sub === $sub,
             ];
         }
 
         return $this->json(['people' => (object) $people]);
+    }
+
+    private function match(string $sub, mixed $hint): array
+    {
+        $user = $this->find($sub);
+
+        if ($user === null && is_array($hint)) {
+            try {
+                $user = Accounts::staffMatch([
+                    'email' => is_string($hint['email'] ?? null) ? $hint['email'] : null,
+                    'workos_user_id' => is_string($hint['workos_user_id'] ?? null) ? $hint['workos_user_id'] : null,
+                ]);
+            } catch (SsoException) {
+                return [null, 'unverified'];
+            }
+        }
+
+        if ($user === null) {
+            return [null, 'missing'];
+        }
+
+        return [$user, $this->isRemoved($user, $sub) ? 'removed' : 'active'];
     }
 
     private function isRemoved(Model $user, string $sub): bool
