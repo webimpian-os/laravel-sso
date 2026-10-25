@@ -18,6 +18,8 @@ use UnexpectedValueException;
 
 class Portal
 {
+    private const STAFF_ACTIONS = ['levels', 'apply', 'remove', 'delete', 'profile', 'status'];
+
     public const LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
 
     public static function issuer(): string
@@ -102,6 +104,36 @@ class Portal
         return $claims;
     }
 
+    public function staffClaims(string $token): array
+    {
+        $claims = $this->verify($token, 'staff+jwt');
+
+        if (! in_array($claims['action'] ?? null, self::STAFF_ACTIONS, true)) {
+            throw $this->fault('The staff notice has an unknown action');
+        }
+
+        $action = $claims['action'];
+
+        if ($action === 'status' ? ! is_array($claims['subs'] ?? null) || array_filter($claims['subs'], fn ($sub) => ! is_string($sub)) !== [] : ($action !== 'levels' && (! is_string($claims['sub'] ?? null) || $claims['sub'] === ''))) {
+            throw $this->fault('The staff notice has no valid sub');
+        }
+
+        // Notices are short-lived; a long one is not from the portal.
+        if (! is_int($claims['iat'] ?? null) || $claims['exp'] - $claims['iat'] > 120) {
+            throw $this->fault('The staff notice lives too long');
+        }
+
+        if (! is_string($claims['jti'] ?? null) || $claims['jti'] === '') {
+            throw $this->fault('The staff notice has no jti');
+        }
+
+        if (! Cache::add($this->cacheKey('staff-jti.'.hash('sha256', $claims['jti'])), true, 300)) {
+            throw $this->fault('The staff notice was already used');
+        }
+
+        return $claims;
+    }
+
     // Returns sub, email, name, workos_user_id, created, access and access_reason.
     public function addStaff(string $email, string $firstName, ?string $lastName = null): array
     {
@@ -124,7 +156,7 @@ class Portal
         }
     }
 
-    private function verify(string $jwt): array
+    private function verify(string $jwt, ?string $typ = null): array
     {
         $keys = $this->keys();
 
@@ -137,12 +169,18 @@ class Portal
         $leeway = JWT::$leeway;
         JWT::$leeway = 60;
 
+        $headers = new \stdClass;
+
         try {
-            $claims = json_decode(json_encode(JWT::decode($jwt, $keys)), true);
+            $claims = json_decode(json_encode(JWT::decode($jwt, $keys, $headers)), true);
         } catch (UnexpectedValueException|DomainException|InvalidArgumentException $e) {
             throw $this->fault('The token did not verify', $e);
         } finally {
             JWT::$leeway = $leeway;
+        }
+
+        if ($typ !== null && ($headers->typ ?? null) !== $typ) {
+            throw $this->fault('The token is not a '.$typ);
         }
 
         if (($claims['iss'] ?? null) !== static::issuer() || ! in_array(config('sso.client_id'), (array) ($claims['aud'] ?? []), true) || ! isset($claims['exp'])) {

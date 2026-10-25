@@ -6,6 +6,7 @@ use Firebase\JWT\JWT;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Webimpian\Sso\Sso;
@@ -130,6 +131,19 @@ abstract class TestCase extends Orchestra
             'events' => ['http://schemas.openid.net/event/backchannel-logout' => new \stdClass],
             ...$claims,
         ]);
+    }
+
+    protected function staffToken(array $claims = []): string
+    {
+        return JWT::encode([
+            'iss' => self::ISSUER,
+            'aud' => 'app-client',
+            'iat' => time(),
+            'exp' => time() + 60,
+            'jti' => (string) Str::uuid(),
+            'action' => 'levels',
+            ...$claims,
+        ], self::key('key-1')['private'], 'ES256', 'key-1', ['typ' => 'staff+jwt']);
     }
 
     protected function portalQuery(TestResponse $response): array
