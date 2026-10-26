@@ -69,6 +69,7 @@ class StaffNoticeController
 
         $connection->transaction(function () use ($claims, $level) {
             [$user, $created] = Accounts::forStaff($claims);
+            Accounts::syncProfile($user, $claims);
 
             (Sso::$applyStaff)($user, $level, $created);
 

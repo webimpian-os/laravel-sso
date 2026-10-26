@@ -115,6 +115,14 @@ it('links and finds an unverified email when the app allows it', function () {
     expect($user->fresh()->sso_sub)->toBe('sub-1')->and(User::count())->toBe(1);
 });
 
+it('copies the portal name and email onto a linked row', function () {
+    $user = User::create(['name' => 'aina', 'email' => 'Aina@example.com', 'email_verified_at' => now()]);
+
+    applyStaff($this, ['name' => 'Aina Binti'])->assertOk();
+
+    expect($user->fresh()->name)->toBe('Aina Binti')->and($user->fresh()->email)->toBe('aina@example.com');
+});
+
 it('creates a new user', function () {
     applyStaff($this, [], $created)->assertOk();
 
