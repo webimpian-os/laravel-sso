@@ -42,6 +42,10 @@ class SsoServiceProvider extends ServiceProvider
             $this->app->bind(\Filament\Http\Responses\Auth\Contracts\LogoutResponse::class, V3LogoutResponse::class);
         }
 
+        if (class_exists(\Filament\Support\Facades\FilamentView::class) && class_exists(\Filament\View\PanelsRenderHook::class)) {
+            \Filament\Support\Facades\FilamentView::registerRenderHook(\Filament\View\PanelsRenderHook::BODY_END, fn () => view('sso::keep-alive'));
+        }
+
         if ($this->app->runningInConsole()) {
             $this->commands([ApproveCommand::class]);
         }

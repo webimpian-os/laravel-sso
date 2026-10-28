@@ -16,7 +16,7 @@ class KeepSsoSession
     {
         $sso = $request->hasSession() ? $request->session()->get('sso') : null;
 
-        if (! is_array($sso) || $request->routeIs('sso.*') || ! Sso::guard()->check()) {
+        if (! is_array($sso) || ($request->routeIs('sso.*') && ! $request->routeIs('sso.active')) || ! Sso::guard()->check()) {
             return $next($request);
         }
 

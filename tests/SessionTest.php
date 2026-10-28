@@ -61,6 +61,36 @@ it('tells background requests the session ended instead of redirecting them', fu
     $this->getJson('dashboard')->assertStatus(419);
 });
 
+it('counts a keep-alive ping as activity, so reading or typing a long form is not idle', function () {
+    $this->signIn(['idle_timeout' => 1800]);
+
+    $this->travel(20)->minutes();
+    $this->postJson('auth/sso/active')->assertNoContent();
+
+    $this->travel(20)->minutes();
+    $this->get('dashboard')->assertOk();
+});
+
+it('never lets a keep-alive ping bring back a session that already went idle', function () {
+    $this->signIn(['idle_timeout' => 1800]);
+    $this->travel(31)->minutes();
+
+    $this->postJson('auth/sso/active')->assertStatus(419);
+    $this->assertGuest();
+});
+
+it('adds the idle warning to pages when the app has an idle timeout', function () {
+    $this->signIn(['idle_timeout' => 1800]);
+
+    expect(view('sso::keep-alive')->render())->toContain('const idle = 1800 * 1000')->toContain('"\\/auth\\/sso\\/active"');
+});
+
+it('leaves pages alone when the app has no idle timeout', function () {
+    $this->signIn();
+
+    expect(trim(view('sso::keep-alive')->render()))->toBe('');
+});
+
 it('checks access with the portal silently once the interval passes', function () {
     $this->signIn(['access_check_interval' => 600]);
 

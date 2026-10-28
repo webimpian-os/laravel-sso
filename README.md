@@ -59,10 +59,18 @@ The portal calls the back-channel URL server to server, so let it through any WA
 | Every sign-in | The account is found by `sso_sub`, never by email, and the portal's name and email are copied onto it. The portal is where they change, so make them read-only in the app. |
 | Access check interval passes | The next page load checks with the portal silently. Forms and background requests are never interrupted. |
 | Access removed, revoked, or signed out in the portal | The app session ends. |
-| Idle past the app's timeout | Coming back needs a full sign-in. |
+| Idle past the app's timeout | Coming back asks for the portal's authenticator code. |
 | Portal unreachable | Staff stay signed in, and the next check tries again. |
 
 The idle timeout and check interval are set per app in the portal. Sessions that didn't come from the portal, such as a break-glass admin login, are left alone.
+
+### Idle warning
+
+Typing, clicking or scrolling counts as activity, and a **Stay signed in** button shows 2 minutes before the timeout. Filament gets it automatically; other apps add this before `</body>`:
+
+```blade
+@include('sso::keep-alive')
+```
 
 ## Accounts
 
